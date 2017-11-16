@@ -34,7 +34,7 @@ class Connector(UserConnector):
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]+['sAMAccountName']))
+        fields = ()
         self.ldap_connection = LdapConnection(self.settings, fields)
 
     def authenticate(self):
@@ -54,4 +54,3 @@ class Connector(UserConnector):
     def _load_records(self, options):
         for user in self.ldap_connection.load_data(options):
             yield user
-

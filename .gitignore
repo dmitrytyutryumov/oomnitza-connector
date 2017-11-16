@@ -1,3 +1,7 @@
 *.log
 *.py[cod]
 *.sqlite
+.idea/*
+.idea/workspace.xml
+config.ini
+config.ini.bak

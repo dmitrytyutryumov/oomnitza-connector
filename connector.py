@@ -13,6 +13,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 from gevent import monkey
+
 monkey.patch_all(thread=False)
 
 import os
@@ -35,6 +36,7 @@ root_logger = logging.getLogger("")
 
 try:
     from oomnitza_gui import main as gui_main
+
     HAVE_GUI = True
 except ImportError:
     LOG.debug("Looks like wxPython is not installed.")
@@ -61,10 +63,11 @@ def prepare_connector(cmdline_args):
         LOG.exception("Error processing config.ini file.")
         sys.exit(1)
 
-    oomnitza_connector = connectors.pop('oomnitza')["__connector__"]
+    oomnitza_connector = connectors.pop('bss')["__connector__"]
     try:
         oomnitza_connector.authenticate()
-    except (connector.AuthenticationError, requests.HTTPError, requests.ConnectionError) as exp:
+    except (connector.AuthenticationError, requests.HTTPError,
+            requests.ConnectionError) as exp:
         LOG.error("Error connecting to Oomnitza API: %s", exp.message)
         sys.exit(1)
 
@@ -79,14 +82,16 @@ def main(cmdline_args):
     """
     Main entry point for Oomnitza connector
     """
-    non_oomnitza_connectors, oomnitza_connector, options = prepare_connector(cmdline_args)
+    non_oomnitza_connectors, oomnitza_connector, options = prepare_connector(
+        cmdline_args)
 
     for name in cmdline_args.connectors:
         LOG.info("Running connector: %s", name)
         if name not in non_oomnitza_connectors:
             LOG.error("Connector '%s' is not enabled.", name)
         else:
-            connector.run_connector(oomnitza_connector, non_oomnitza_connectors[name], options)
+            connector.run_connector(oomnitza_connector,
+                                    non_oomnitza_connectors[name], options)
 
     Converter.run_all_cleanups()
 
@@ -94,7 +99,6 @@ def main(cmdline_args):
 
 
 def parse_command_line_args(for_server=False):
-
     action_default = None
     action_nargs = None
     logging_setting_path = relative_app_path('logging.json')
@@ -105,8 +109,8 @@ def parse_command_line_args(for_server=False):
         logging_setting_path = relative_path('logging.json')
 
     actions = [
-        'upload',      # action which pulls data from remote system and push to Oomnitza.
-        'generate-ini' # action which generates an example config.ini file.
+        'upload',
+        'generate-ini'  # action which generates an example config.ini file.
     ]
     if HAVE_GUI:
         # action which runs the gui.
@@ -118,20 +122,34 @@ def parse_command_line_args(for_server=False):
         parser.add_argument('--host', type=str, default='127.0.0.1')
         parser.add_argument('--port', type=int, default=8000)
     else:
-        parser.add_argument("action", default=action_default, nargs=action_nargs, choices=actions, help="Action to perform.")
-        parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
-        parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
-        parser.add_argument('--singleton', type=int, default=1, help="Control the behavior of connector. Limiting the number of "
-                                                                     "simultaneously running connectors")
-        parser.add_argument('--workers', type=int, default=10, help="Number of async IO workers used to pull & push records.")
+        parser.add_argument("action", default=action_default,
+                            nargs=action_nargs, choices=actions,
+                            help="Action to perform.")
+        parser.add_argument("connectors", nargs='*', default=[],
+                            help="Connectors to run.")
+        parser.add_argument('--record-count', type=int, default=None,
+                            help="Number of records to pull and process from connection.")
+        parser.add_argument('--singleton', type=int, default=1,
+                            help="Control the behavior of connector. Limiting the number of "
+                                 "simultaneously running connectors")
+        parser.add_argument('--workers', type=int, default=10,
+                            help="Number of async IO workers used to pull & push records.")
 
-    parser.add_argument('--version', action='store_true', help="Show the connector version.")
-    parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector.")
-    parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
-    parser.add_argument('--save-data', action='store_true', help="Saves the data loaded from other system.")
+    parser.add_argument('--version', action='store_true',
+                        help="Show the connector version.")
+    parser.add_argument('--show-mappings', action='store_true',
+                        help="Show the mappings which would be used by the connector.")
+    parser.add_argument('--testmode', action='store_true',
+                        help="Run connectors in test mode.")
+    parser.add_argument('--save-data', action='store_true',
+                        help="Saves the data loaded from other system.")
     # parser.add_argument('--load-data', default="", help="Directory from which to load data.")
-    parser.add_argument('--ini', type=str, default=relative_app_path("config.ini"), help="Config file to use.")
-    parser.add_argument('--logging-config', type=str, default=logging_setting_path, help="Use to override logging config file to use.")
+    parser.add_argument('--ini', type=str,
+                        default=relative_app_path("config.ini"),
+                        help="Config file to use.")
+    parser.add_argument('--logging-config', type=str,
+                        default=logging_setting_path,
+                        help="Use to override logging config file to use.")
 
     cmdline_args = parser.parse_args()
 
@@ -161,7 +179,6 @@ if __name__ == "__main__":
             config.generate_ini_file(args)
         elif args.action == 'gui' and HAVE_GUI:
             if not os.path.exists(args.ini):
-                # ensure the gui has a config.ini file to load. Generate it if missing.
                 config.generate_ini_file(args)
             gui_main(args)
         else:

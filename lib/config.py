@@ -155,15 +155,14 @@ def parse_config(args):
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
                     DynamicConverter(name, filter_str)
-            elif section == 'oomnitza' or config.has_option(section, 'enable') and config.getboolean(section, 'enable'):
-                if not connectors and section != 'oomnitza':
-                    raise ConfigError("Error: [oomnitza] must be the first section in the ini file.")
+            elif section == 'bss' or config.has_option(section, 'enable') and config.getboolean(section, 'enable'):
+                if not connectors and section != 'bss':
+                    raise ConfigError("Error: [bss] must be the first section in the ini file.")
 
                 if '.' in section:
                     module = section.split('.')[0]
                 else:
                     module = section
-
                 try:
                     mod = importlib.import_module("connectors.{0}".format(module))
                     connector = mod.Connector
@@ -228,8 +227,8 @@ def parse_config(args):
                                     "variable %r." % (section, cfg['env_password'])
                                 )
 
-                        if 'oomnitza' in connectors:
-                            cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
+                        if 'bss' in connectors:
+                            cfg["__oomnitza_connector__"] = connectors['bss']["__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
                         try:
@@ -265,7 +264,7 @@ def parse_config(args):
         for name, connector in connectors.items():
             if name == 'oomnitza':
                 continue
-            print connector["__connector__"].section, "Mappings"
+            pprint.pprint(connector["__connector__"].section, "Mappings")
             pprint.pprint(connector["__connector__"].field_mappings)
         exit(0)
 

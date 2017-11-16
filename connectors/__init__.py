@@ -1,6 +1,7 @@
 EnabledConnectors = {
-    'oomnitza',
+    'bss',
 
+    # 'oomnitza',
     'airwatch',
     'bamboohr',
     'casper',
@@ -15,7 +16,4 @@ EnabledConnectors = {
     'appledep',
     'csv_assets',
     'csv_users',
-    #
-    # 'googleusers',
-    # 'chromebooks',
 }

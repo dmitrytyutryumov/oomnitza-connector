@@ -130,49 +130,49 @@ class BaseConnector(object):
                 else:
                     self.settings[key] = default
 
-        self.field_mappings = self.get_field_mappings(ini_field_mappings)
-        if hasattr(self, "DefaultConverters"):
-            for field, mapping in self.field_mappings.items():
-                source = mapping.get('source', None)
-                if source in self.DefaultConverters and 'converter' not in mapping:
-                    mapping['converter'] = self.DefaultConverters[source]
+        # self.field_mappings = self.get_field_mappings(ini_field_mappings)
+        # if hasattr(self, "DefaultConverters"):
+        #     for field, mapping in self.field_mappings.items():
+        #         source = mapping.get('source', None)
+        #         if source in self.DefaultConverters and 'converter' not in mapping:
+        #             mapping['converter'] = self.DefaultConverters[source]
 
-        if section == 'oomnitza' and not BaseConnector.OomnitzaConnector:
+        if section == 'bss' and not BaseConnector.OomnitzaConnector:
             BaseConnector.OomnitzaConnector = self
 
-    def get_field_mappings(self, extra_mappings):
-        mappings = self.get_default_mappings()  # loads from Connector object or Oomnitza mapping api
+    # def get_field_mappings(self, extra_mappings):
+    #     mappings = self.get_default_mappings()  # loads from Connector object or Oomnitza mapping api
+    #
+    #     for field, mapping in extra_mappings.items():
+    #         if field not in mappings:
+    #             mappings[field] = mapping
+    #         else:
+    #             for key, value in mapping.items():
+    #                 mappings[field][key] = value
+    #
+    #     return mappings
 
-        for field, mapping in extra_mappings.items():
-            if field not in mappings:
-                mappings[field] = mapping
-            else:
-                for key, value in mapping.items():
-                    mappings[field][key] = value
-
-        return mappings
-
-    def get_default_mappings(self):
-        """
-        Returns the default mappings, as defined in the class level FieldMappings dict.
-        It supports loading mappings from Oomnitza API.
-        :return: the default mappings
-        """
-        # Connector mappings are stored in Oomnitza, so get them.
-        default_mappings = copy.deepcopy(self.FieldMappings)
-
-        if self.settings.get('use_server_map', True) in TrueValues:
-            server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
-
-            for source, fields in server_mappings.items():
-                if isinstance(fields, basestring):
-                    fields = [fields]
-                for f in fields:
-                    if f not in default_mappings:
-                        default_mappings[f] = {}
-                    default_mappings[f]['source'] = source
-
-        return default_mappings
+    # def get_default_mappings(self):
+    #     """
+    #     Returns the default mappings, as defined in the class level FieldMappings dict.
+    #     It supports loading mappings from Oomnitza API.
+    #     :return: the default mappings
+    #     """
+    #     # Connector mappings are stored in Oomnitza, so get them.
+    #     default_mappings = copy.deepcopy(self.FieldMappings)
+    #
+    #     if self.settings.get('use_server_map', True) in TrueValues:
+    #         server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
+    #
+    #         for source, fields in server_mappings.items():
+    #             if isinstance(fields, basestring):
+    #                 fields = [fields]
+    #             for f in fields:
+    #                 if f not in default_mappings:
+    #                     default_mappings[f] = {}
+    #                 default_mappings[f]['source'] = source
+    #
+    #     return default_mappings
 
     @classmethod
     def example_ini_settings(cls):
@@ -576,8 +576,8 @@ class UserConnector(BaseConnector):
         else:
             self.normal_position = False
 
-        if 'POSITION' not in self.field_mappings and not self.normal_position:
-            self.field_mappings['POSITION'] = {"setting": 'default_position'}
+        # if 'POSITION' not in self.field_mappings and not self.normal_position:
+        #     self.field_mappings['POSITION'] = {"setting": 'default_position'}
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         options['agent_id'] = self.MappingName

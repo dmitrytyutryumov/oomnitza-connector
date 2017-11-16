@@ -67,7 +67,6 @@ class LdapConnection(object):
     def __init__(self, settings, fields):
         self.settings = settings
         self.ldap_connection = None
-        self.ldap_query_fields = fields
 
     def authenticate(self):
         # ldap.set_option(ldap.OPT_DEBUG_LEVEL, 1)
@@ -250,16 +249,13 @@ class LdapConnection(object):
             group = group[0]
         if len(group) == 2 and group[0] and group[1]:
             group = group[1]
-        if group:
-            for index, member in enumerate(group['member']):
-                print index, member
 
         members = []
-        for member in group['member']:
-            print member
+        for member in group['memberUid']:
             user = self.get_object(options, member)
             if user:
                 members.append(self.clean_record(user))
+                print user
 
         return members
 
@@ -269,7 +265,7 @@ class LdapConnection(object):
     def get_object(self, options, dn):
         full_record = options.get('full_record', False)
 
-        fields = self.ldap_query_fields
+        fields = None
         if full_record:
             fields = None
 
