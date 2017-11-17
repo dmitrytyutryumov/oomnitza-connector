@@ -19,8 +19,6 @@ class Connector(UserConnector):
         'load_organizations': {'order': 6, 'default': False},
     }
 
-    FieldMappings = {}
-
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
         self.url_template = "https://%s.zendesk.com/api/{0}" % self.settings['system_name']

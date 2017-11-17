@@ -21,8 +21,6 @@ class Connector(UserConnector):
         'deprovisioned':    {'order': 5, 'default': 'false', 'example': 'false'}
     }
 
-    FieldMappings = {}
-
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
 

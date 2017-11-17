@@ -20,8 +20,6 @@ class Connector(UserConnector):
         'default_position': {'order': 9, 'example': 'Employee'},
     }
 
-    FieldMappings = {}
-
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
         self.url_temlate = "%s/%s/{0}" % (self.settings['url'], self.settings['system_name'])

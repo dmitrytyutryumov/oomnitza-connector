@@ -23,8 +23,6 @@ class Connector(UserConnector):
         'api_token':        {'order': 6, 'example': "", 'default': ""},
     }
 
-    FieldMappings = {}
-
     StandardFields = {
         'activated-at',
         'created-at',

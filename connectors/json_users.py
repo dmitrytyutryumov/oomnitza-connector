@@ -27,8 +27,6 @@ class Connector(UserConnector):
         'default_position': {'order':  9, 'default': 'Employee'},
     }
 
-    FieldMappings = {}
-
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
 

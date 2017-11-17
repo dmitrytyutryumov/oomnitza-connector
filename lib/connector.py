@@ -62,7 +62,6 @@ def stop_connector(connector):
 
 class BaseConnector(object):
     Converters = {}
-    FieldMappings = {}
     MappingName = "unnamed"
     OomnitzaBatchSize = 100
     BuiltinSettings = ('ssl_protocol',)

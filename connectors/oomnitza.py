@@ -12,13 +12,12 @@ LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
 
 class Connector(BaseConnector):
     Settings = {
-        'url':       {'order': 1, 'example': "https://example.oomnitza.com"},
+        'url': {'order': 1, 'example': "https://example.oomnitza.com"},
         'api_token': {'order': 2, 'example': "", 'default': ""},
-        'username':  {'order': 3, 'example': "oomnitza-sa", 'default': ""},
-        'password':  {'order': 4, 'example': "ThePassword", 'default': ""},
+        'username': {'order': 3, 'example': "oomnitza-sa", 'default': ""},
+        'password': {'order': 4, 'example': "ThePassword", 'default': ""},
 
     }
-    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
@@ -34,18 +33,21 @@ class Connector(BaseConnector):
 
     def get_headers(self):
         if self.settings['api_token']:
-            return {'Content-Type': 'application/json; charset=utf-8', 'Authorization2': self.settings['api_token']}
+            return {'Content-Type': 'application/json; charset=utf-8',
+                    'Authorization2': self.settings['api_token']}
         # these empty headers because of the old implementation of request_token endpoint, body SHOULD NOT be interpreted as JSON here!
         return {}
 
     def authenticate(self):
         if not self.settings['api_token']:
             if not self.settings['username'] or not self.settings['password']:
-                raise ConfigError("Oomnitza section needs either: api_token or username & password.")
+                raise ConfigError(
+                    "Oomnitza section needs either: api_token or username & password.")
 
         try:
             if self.settings['api_token']:
-                self.get("{url}/api/v2/mappings?name=AuthTest".format(**self.settings))
+                self.get("{url}/api/v2/mappings?name=AuthTest".format(
+                    **self.settings))
                 return
 
             auth_url = "{url}/api/request_token".format(**self.settings)
@@ -58,18 +60,23 @@ class Connector(BaseConnector):
             self.settings['api_token'] = response.json()["token"]
         except RequestException as exp:
             if isinstance(exp.message, basestring):
-                raise AuthenticationError("{} returned {}.".format(self.settings['url'], exp.message))
-            if len(exp.message.args) > 2 and isinstance(exp.message.args[1], gaierror):
-                msg = "Unable to connect to {} ({}).".format(self.settings['url'], exp.message.args[1].errno)
+                raise AuthenticationError(
+                    "{} returned {}.".format(self.settings['url'], exp.message))
+            if len(exp.message.args) > 2 and isinstance(exp.message.args[1],
+                                                        gaierror):
+                msg = "Unable to connect to {} ({}).".format(
+                    self.settings['url'], exp.message.args[1].errno)
                 if exp.message.args[1].errno == 8:
-                    msg = "Unable to get address for {}.".format(self.settings['url'])
+                    msg = "Unable to get address for {}.".format(
+                        self.settings['url'])
                 raise AuthenticationError(msg)
             raise AuthenticationError(str(exp))
-        # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
+            # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
 
     def upload_users(self, users, options):
         # logger.debug("upload_users( %r )", users)
-        url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(**self.settings)
+        url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(
+            **self.settings)
         if 'normal_position' in options:
             url += "&normal_position={}".format(options['normal_position'])
         url += "&agent_id={}".format(options.get('agent_id', 'Unknown'))
@@ -80,7 +87,8 @@ class Connector(BaseConnector):
 
     def upload_audit(self, computers, options):
         # logger.debug("upload_users( %r )", users)
-        url = "{url}/api/v2/bulk/audit?VERSION={VERSION}".format(**self.settings)
+        url = "{url}/api/v2/bulk/audit?VERSION={VERSION}".format(
+            **self.settings)
         response = self.post(url, computers)
         # logger.debug("response = %r", response.text)
         return response
@@ -119,8 +127,11 @@ class Connector(BaseConnector):
         try:
             url = "{0}/api/v3/locations".format(self.settings['url'])
             response = self.get(url)
-            mappings = {loc[label_field]: loc[id_field] for loc in response.json() if loc.get(id_field, None) and loc.get(label_field, None)}
-            LOG.info("Location Map to %s: External Value -> Oomnitza ID", id_field)
+            mappings = {loc[label_field]: loc[id_field] for loc in
+                        response.json() if
+                        loc.get(id_field, None) and loc.get(label_field, None)}
+            LOG.info("Location Map to %s: External Value -> Oomnitza ID",
+                     id_field)
             for name in sorted(mappings.keys()):
                 LOG.debug("    {} -> {}".format(name, mappings[name]))
             return mappings

@@ -26,8 +26,6 @@ class Connector(AuditConnector):
         'sync_field':  {'order': 2, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
-    FieldMappings = {}
-
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
 

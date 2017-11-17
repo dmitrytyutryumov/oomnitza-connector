@@ -48,20 +48,23 @@ SELECT DisplayName0 AS 'name',
   FROM dbo.v_GS_ADD_REMOVE_PROGRAMS_64
  WHERE ResourceID = ?
  """
+
+
 class Connector(AuditConnector):
     MappingName = 'SCCM'
     Settings = {
-        'server':            {'order': 1, 'example': 'server.example.com'},
-        'database':          {'order': 2, 'default': 'CM_DCT'},
-        'username':          {'order': 3, 'example': 'change-me'},
-        'password':          {'order': 4, 'example': 'change-me'},
-        'authentication':    {'order': 5, 'default': "SQL Server", 'choices': ("SQL Server", "Windows")},
-        'sync_field':        {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'server': {'order': 1, 'example': 'server.example.com'},
+        'database': {'order': 2, 'default': 'CM_DCT'},
+        'username': {'order': 3, 'example': 'change-me'},
+        'password': {'order': 4, 'example': 'change-me'},
+        'authentication': {'order': 5, 'default': "SQL Server",
+                           'choices': ("SQL Server", "Windows")},
+        'sync_field': {'order': 6,
+                       'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
     DefaultConverters = {
         # FORMAT: "{source field}": "{converter to be applied by default}",
     }
-    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
@@ -72,7 +75,8 @@ class Connector(AuditConnector):
             self.authenticate()
             return {'result': True, 'error': ''}
         except Exception as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False,
+                    'error': 'Connection Failed: %s' % (exp.message)}
 
     def authenticate(self):
         """
@@ -140,7 +144,8 @@ class Connector(AuditConnector):
             }
 
             if self.settings.get("__save_data__", False):
-                with open("./saved_data/{}.json".format(str(resource['resource_id'])), "w") as save_file:
+                with open("./saved_data/{}.json".format(
+                        str(resource['resource_id'])), "w") as save_file:
                     save_file.write(json.dumps(audit, indent=2))
 
             return audit
@@ -168,7 +173,7 @@ class Connector(AuditConnector):
                     "path": None
                 })
             except Exception as exception:
-                logger.exception("Exception in get_installed_software: %s" % (exception))
+                logger.exception(
+                    "Exception in get_installed_software: %s" % (exception))
 
         return installed_software
-

@@ -12,5 +12,3 @@ class Connector(UserConnector, CsvConnectorMixin):
         'default_role': {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
     }
-
-    FieldMappings = {}
