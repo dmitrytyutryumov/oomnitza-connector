@@ -268,23 +268,13 @@ class LdapConnection(object):
         if full_record:
             fields = None
 
-        # result = self.ldap_connection.search_s(
-        #     dn, ldap.SCOPE_BASE, self.settings['filter'],
-        #     fields
-        # )
-        # if result:
-        #     if len(result[0]) == 2 and result[0][1]:
-        #         return result[0][1]
+        result = self.ldap_connection.search_s(
+            dn, ldap.SCOPE_BASE, self.settings['filter'],
+            fields
+        )
+        if result:
+            if len(result[0]) == 2 and result[0][1]:
+                return result[0][1]
 
-        return {
-                "FIRST_NAME": "Travis",
-                "LAST_NAME": "Kalanick",
-                "PERMISSIONS_ID": "38",
-                "USER": "travis",
-                "6BAD1B62F59C11E491B306CD598F4397": None,
-                "POSITION": "Employee",
-                "EMAIL": "travis@uber.com"
-            }
-
-        # LOG.warning("Unable to get LDAP object for '%s'.", dn)
-        # return None
+        LOG.warning("Unable to get LDAP object for '%s'.", dn)
+        return None
