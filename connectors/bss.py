@@ -13,15 +13,16 @@ LOG = logging.getLogger("connectors/oomnitza")
 
 
 class Connector(BaseConnector):
+    # TODO: put correct url to bss service
     Settings = {
         'url':       {'order': 1, 'example': "https://example.bss.com"},
         'api_token': {'order': 2, 'example': "", 'default': ""},
+        'data_size': {'order': 3, 'example': 100000, 'default': 100000},
     }
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
         self._test_headers = []
-        self.data_size = 2
         # self.authenticate()
 
     def get_headers(self):
@@ -34,8 +35,8 @@ class Connector(BaseConnector):
 
         return {}
 
+    # TODO: config  coorect auth
     def authenticate(self):
-    # TODO: config  ure auth
         if not self.settings['api_token']:
                 raise ConfigError("Oomnitza section needs either: api_token")
 
@@ -70,15 +71,22 @@ class Connector(BaseConnector):
     def upload_data(self, data, options, data_type):
         service_name = options['agent_id']
         run_id = self._get_portion(data, service_name)
-        if len(data) > self.data_size:
+
+        try:
+            data_size = int(self.settings['data_size'])
+        except ValueError:
+            LOG.error('Data size needs to be a number')
+            raise ConfigError('Data size needs to be a number')
+
+        if len(data) > data_size:
             start = 0
-            finish = self.data_size
+            finish = data_size
             while start <= len(data):
                 if finish > len(data):
                     finish = len(data)
                 self._sent_to_bss(data[start:finish], run_id, data_type)
-                start += self.data_size
-                finish += self.data_size
+                start += data_size
+                finish += data_size
         else:
             self._sent_to_bss(data, run_id, data_type)
 
