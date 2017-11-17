@@ -24,13 +24,7 @@ class Connector(UserConnector):
         'default_position': {'order':  9, 'example': 'Employee'},
     }
 
-    FieldMappings = {
-        'USER':           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
-        'FIRST_NAME':     {'source': "givenName"},
-        'LAST_NAME':      {'source': "sn"},
-        'EMAIL':          {'source': "mail", 'required': True},
-        'PERMISSIONS_ID': {'setting': "default_role"},
-    }
+    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
@@ -52,5 +46,4 @@ class Connector(UserConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % exp}
 
     def _load_records(self, options):
-        for user in self.ldap_connection.load_data(options):
-            yield user
+        return self.ldap_connection.load_data(options)

@@ -20,15 +20,7 @@ class Connector(UserConnector):
         'default_position': {'order': 9, 'example': 'Employee'},
     }
 
-    FieldMappings = {
-        'USER':           {'source': "workEmail"},
-        'FIRST_NAME':     {'source': "firstName"},
-        'LAST_NAME':      {'source': "lastName"},
-        'EMAIL':          {'source': "workEmail"},
-        'PHONE':          {'source': "mobilePhone"},
-        'POSITION':       {'source': "jobTitle"},
-        'PERMISSIONS_ID': {'setting': "default_role"},
-    }
+    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)

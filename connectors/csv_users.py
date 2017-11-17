@@ -13,5 +13,4 @@ class Connector(UserConnector, CsvConnectorMixin):
         'default_position': {'order': 4, 'example': 'Employee'},
     }
 
-    FieldMappings = {
-    }
+    FieldMappings = {}

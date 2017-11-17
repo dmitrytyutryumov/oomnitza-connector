@@ -12,5 +12,4 @@ class Connector(AuditConnector, CsvConnectorMixin):
         'sync_field': {'order': 3, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
-    FieldMappings = {
-    }
+    FieldMappings = {}

@@ -1,4 +1,3 @@
-import copy
 import errno
 import json
 import logging
@@ -89,20 +88,12 @@ class BaseConnector(object):
         self.section = section
         self.settings = {'VERSION': VERSION}
         self.keep_going = True
-        ini_field_mappings = {}
         self.__filter__ = None
         self.send_counter = 0
         self._session = None
 
         for key, value in settings.items():
-            if key.startswith('mapping.'):
-                # it is a field mapping from the ini
-                field_name = key.split('.')[1].upper()
-                # ToDo: validate mapping
-                ini_field_mappings[field_name] = value
-            # elif key.startswith('subrecord.'):
-            #     ini_field_mappings[key] = value
-            elif key == '__filter__':
+            if key == '__filter__':
                 self.__filter__ = value
             else:
                 # first, simple copy for internal __key__ values
@@ -130,49 +121,8 @@ class BaseConnector(object):
                 else:
                     self.settings[key] = default
 
-        # self.field_mappings = self.get_field_mappings(ini_field_mappings)
-        # if hasattr(self, "DefaultConverters"):
-        #     for field, mapping in self.field_mappings.items():
-        #         source = mapping.get('source', None)
-        #         if source in self.DefaultConverters and 'converter' not in mapping:
-        #             mapping['converter'] = self.DefaultConverters[source]
-
         if section == 'bss' and not BaseConnector.OomnitzaConnector:
             BaseConnector.OomnitzaConnector = self
-
-    # def get_field_mappings(self, extra_mappings):
-    #     mappings = self.get_default_mappings()  # loads from Connector object or Oomnitza mapping api
-    #
-    #     for field, mapping in extra_mappings.items():
-    #         if field not in mappings:
-    #             mappings[field] = mapping
-    #         else:
-    #             for key, value in mapping.items():
-    #                 mappings[field][key] = value
-    #
-    #     return mappings
-
-    # def get_default_mappings(self):
-    #     """
-    #     Returns the default mappings, as defined in the class level FieldMappings dict.
-    #     It supports loading mappings from Oomnitza API.
-    #     :return: the default mappings
-    #     """
-    #     # Connector mappings are stored in Oomnitza, so get them.
-    #     default_mappings = copy.deepcopy(self.FieldMappings)
-    #
-    #     if self.settings.get('use_server_map', True) in TrueValues:
-    #         server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
-    #
-    #         for source, fields in server_mappings.items():
-    #             if isinstance(fields, basestring):
-    #                 fields = [fields]
-    #             for f in fields:
-    #                 if f not in default_mappings:
-    #                     default_mappings[f] = {}
-    #                 default_mappings[f]['source'] = source
-    #
-    #     return default_mappings
 
     @classmethod
     def example_ini_settings(cls):
@@ -182,7 +132,8 @@ class BaseConnector(object):
         :return:
         """
         settings = [('enable', 'False')]
-        for key, value in sorted(cls.Settings.items(), key=lambda t: t[1]['order']):
+        for key, value in sorted(
+                cls.Settings.items(), key=lambda t: t[1]['order']):
             if 'example' in value:
                 # settings.append((key, "[{0}]".format(value['example'])))
                 settings.append((key, value['example']))
@@ -256,12 +207,7 @@ class BaseConnector(object):
         """
         verify_ssl = self.settings.get('verify_ssl', True) in TrueValues
         if verify_ssl:
-            # 'frozen' is added by PyInstaller which is necessary to learn at run-time
-            # whether the app is running from source or part of bundle
-            # Please refer to http://pythonhosted.org/PyInstaller/#adapting-to-being-frozen
             if getattr(sys, 'frozen', False):
-                # '_MEIPASS' is added by PyInstaller which is the path variable to temp directory at run-time
-                # and cacert.pem (Certified Authority) is included in building binary time (defined in PyInstaller spec)
                 return os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
             else:
                 return True
@@ -302,12 +248,7 @@ class BaseConnector(object):
             LOG.info("Skipping record %r because it did not pass the filter.", rec)
             return
 
-        converted_record = self.convert_record(rec)
-        if not converted_record:
-            LOG.debug("Skipping record %r because it has not been converted properly", rec)
-            return
-
-        self.send_to_oomnitza(oomnitza_connector, converted_record, options)
+        self.send_to_oomnitza(oomnitza_connector, rec, options)
 
     def is_authorized(self):
         """
@@ -341,35 +282,24 @@ class BaseConnector(object):
             pool_size = self.settings['__workers__']
 
             connection_pool = Pool(size=pool_size)
-            for record in self._load_records(options):
+            records = self._load_records(options=options)
+            connection_pool.spawn(
+                self.sender,*(oomnitza_connector, options, records))
 
-                if not self.keep_going:
-                    break
+            LOG.info("Sent %d records to Oomnitza.", len(records))
+            connection_pool.join(timeout=60)  # set non-empty timeout to
+            # guarantee context switching in case of threading
 
-                if not isinstance(record, list):
-                    record = [record]
-
-                for rec in record:
-
-                    if self.processed_records_counter < limit_records:
-
-                        # increase records counter
-                        self.processed_records_counter += 1
-                        if not self.processed_records_counter % 10:
-                            LOG.info("Sent %d records to Oomnitza.", self.processed_records_counter)
-
-                        if not self.keep_going:
-                            break
-
-                        connection_pool.spawn(self.sender, *(oomnitza_connector, options, rec))
-
-            connection_pool.join(timeout=60)  # set non-empty timeout to guarantee context switching in case of threading
-
-            LOG.info("Finished! Processed %d records. %d records have been sent to Oomnitza" % (self.processed_records_counter, self.sent_records_counter))
+            LOG.info(
+                "Finished! Processed %d records. "
+                "%d records have been sent to Oomnitza" % (
+                    len(records), len(records)))
 
             return True
         except RequestException as exp:
-            raise ConfigError("Error loading records from %s: %s" % (self.MappingName, exp.message))
+            raise ConfigError(
+                "Error loading records from %s: %s" % (
+                    self.MappingName, exp.message))
 
     def send_to_oomnitza(self, oomnitza_connector, data, options):
         """
@@ -384,8 +314,7 @@ class BaseConnector(object):
         """
         method = getattr(
             oomnitza_connector,
-            "{1}upload_{0}".format(
-                self.RecordType,
+            "{}upload_data".format(
                 self.settings["__testmode__"] and '_test_' or ''
             )
         )
@@ -407,10 +336,9 @@ class BaseConnector(object):
             except:
                 LOG.exception("Error saving data.")
 
-        result = method(data, options)
+        result = method(data, options, self.RecordType)
         if not self.settings["__testmode__"]:
             self.sent_records_counter += 1
-        # LOG.debug("send_to_oomnitza result: %r", result)
         return result
 
     def test_connection(self, options):
@@ -445,78 +373,6 @@ class BaseConnector(object):
         :return:
         """
         raise NotImplementedError
-
-    def convert_record(self, incoming_record):
-        """
-        Takes the record from the target and returns the data in the Oomnitza format.
-        This is done using the self.field_mappings.
-        :param incoming_record: the incoming record
-        :return: the outgoing record
-        """
-        # LOG.debug("incoming_record = %r", incoming_record)
-        return self._convert_record(incoming_record, self.field_mappings)
-
-    def _convert_record(self, incoming_record, field_mappings):
-        """
-        Convert the passed incoming_record using passed field mappings.
-        :param incoming_record: the incoming record, as a dict
-        :param field_mappings: the field mappings to use
-        :return: the outgoing record as a dict
-        """
-        outgoing_record = {}
-        missing_fields = set()
-        # subrecords = {}
-
-        for field, specs in field_mappings.items():
-            # First, check if this is a subrecord. If so, re-enter _convert_record
-            # LOG.debug("%%%% %r: %r", field, specs)
-            # if field.startswith('subrecord.'):
-            #     LOG.debug("**** processing subrecord %s: %r", field, specs)
-            #     name = field.split('.', 1)[-1]
-            #     if specs['source'] in incoming_record:
-            #         subrecords[name] = self._convert_record(incoming_record[specs['source']], specs['mappings'])
-            #     continue
-
-            source = specs.get('source', None)
-            if source:
-                incoming_value = self.get_field_value(source, incoming_record)
-            else:
-                setting = specs.get('setting')
-                if setting:
-                    incoming_value = self.get_setting_value(setting)
-                else:
-                    hardcoded = specs.get('hardcoded', None)
-                    if hardcoded is not None:
-                        incoming_value = hardcoded
-                    else:
-                        raise RuntimeError("Field %s is not configured correctly.", field)
-
-            converter = specs.get('converter', None)
-            if converter:
-                try:
-                    incoming_value = self.apply_converter(converter, source or field, incoming_record, incoming_value)
-                except Exception as exp:
-                    LOG.exception("Failed to run converter: %s", converter)
-                    incoming_value = None
-
-            f_type = specs.get('type', None)
-            if f_type:
-                incoming_value = f_type(incoming_value)
-
-            if specs.get('required', False) in TrueValues and not incoming_value:
-                LOG.debug("Record missing %r. Record = %r", field, incoming_record)
-                missing_fields.add(field)
-
-            outgoing_record[field] = incoming_value
-
-        # if subrecords:
-        #     outgoing_record.update(subrecords)
-
-        if missing_fields:
-            LOG.warning("Record missing fields: %r. Incoming Record: %r", list(missing_fields), incoming_record)
-            return None
-
-        return outgoing_record
 
     @classmethod
     def get_field_value(cls, field, data, default=None):
@@ -558,26 +414,12 @@ class UserConnector(BaseConnector):
     RecordType = 'users'
 
     def __init__(self, section, settings):
-
-        if 'USER' in self.FieldMappings:
-            self.FieldMappings['USER']['required'] = True
-        else:
-            raise Exception("Missing mapping filed USER is required for records will be sent to Oomnitza.")
-
-        if 'EMAIL' in self.FieldMappings:
-            self.FieldMappings['EMAIL']['required'] = True
-        else:
-            raise Exception("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
-
         super(UserConnector, self).__init__(section, settings)
 
         if self.settings['default_position'].lower() == 'unused':
             self.normal_position = True
         else:
             self.normal_position = False
-
-        # if 'POSITION' not in self.field_mappings and not self.normal_position:
-        #     self.field_mappings['POSITION'] = {"setting": 'default_position'}
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         options['agent_id'] = self.MappingName
@@ -593,14 +435,6 @@ class AuditConnector(BaseConnector):
 
     def __init__(self, section, settings):
         super(AuditConnector, self).__init__(section, settings)
-
-        if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced. "
-                              "Please check your field mappings under System Settings > Connectors then select "
-                              "'%s' from the drop down." %
-                              (self.settings['sync_field'], self.MappingName, self.MappingName))
-
-        self.field_mappings[self.settings['sync_field']]['required'] = True
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {

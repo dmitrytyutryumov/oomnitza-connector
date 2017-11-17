@@ -1,3 +1,5 @@
+import hashlib
+import json
 import logging
 import pprint
 from socket import gaierror
@@ -15,20 +17,12 @@ class Connector(BaseConnector):
         'url':       {'order': 1, 'example': "https://example.bss.com"},
         'api_token': {'order': 2, 'example': "", 'default': ""},
     }
-    # no FieldMappings for oomnitza connector
-    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
         self._test_headers = []
+        self.data_size = 2
         # self.authenticate()
-
-    def get_field_mappings(self, extra_mappings):
-        """ Override base to always return an empty mapping set.
-        :param extra_mappings:
-        :return: an empty dict()
-        """
-        return {}
 
     def get_headers(self):
         if self.settings['api_token']:
@@ -41,6 +35,7 @@ class Connector(BaseConnector):
         return {}
 
     def authenticate(self):
+    # TODO: config  ure auth
         if not self.settings['api_token']:
                 raise ConfigError("Oomnitza section needs either: api_token")
 
@@ -49,12 +44,14 @@ class Connector(BaseConnector):
             token = self.settings['api_token']
             data = {
                 "access_token": token,
-                "service_id": 1,
-                "expires_at": "2018-12-22T03:12:58.019077+00:00"
+                "service_name": "LDAP",
+                "expires_at": "2019-12-22T03:12:58.019077+00:00"
             }
             response = self.post(url, data=data)
             assert response.status_code == 201
+
             return
+
         except (RequestException, AssertionError) as exp:
             if isinstance(exp.message, basestring):
                 raise AuthenticationError(
@@ -70,22 +67,22 @@ class Connector(BaseConnector):
                 raise AuthenticationError(msg)
             raise AuthenticationError(str(exp))
 
-    def upload_users(self, users, options):
-        url = "{url}/api/v2/bulk/users?VERSION={VERSION}"\
-            .format(**self.settings)
-        if 'normal_position' in options:
-            url += "&normal_position={}"\
-                .format(options['normal_position'])
-        url += "&agent_id={}".format(options.get('agent_id', 'Unknown'))
+    def upload_data(self, data, options, data_type):
+        service_name = options['agent_id']
+        run_id = self._get_portion(data, service_name)
+        if len(data) > self.data_size:
+            start = 0
+            finish = self.data_size
+            while start <= len(data):
+                if finish > len(data):
+                    finish = len(data)
+                self._sent_to_bss(data[start:finish], run_id, data_type)
+                start += self.data_size
+                finish += self.data_size
+        else:
+            self._sent_to_bss(data, run_id, data_type)
 
-        response = self.post(url, users)
-        return response
-
-    def upload_audit(self, computers, options):
-        url = "{url}/api/v2/bulk/audit?VERSION={VERSION}"\
-            .format(**self.settings)
-        response = self.post(url, computers)
-        return response
+        return self._close_portion(run_id)
 
     @staticmethod
     def _test_upload_users(users, options):
@@ -103,26 +100,6 @@ class Connector(BaseConnector):
     def example_ini_settings(cls):
         settings = super(Connector, cls).example_ini_settings()
         return settings[1:]
-
-    # def get_mappings(self, name):
-    #     url = "{0}/api/v2/service/{1}/mapping".\
-    #         format(self.settings['url'], name)
-    #     response = self.get(url)
-    #     return response.json()
-
-    def get_location_mappings(self, id_field, label_field):
-        try:
-            url = "{0}/api/v3/locations".format(self.settings['url'])
-            response = self.get(url)
-            mappings = {loc[label_field]: loc[id_field] for loc in response.json()
-                        if loc.get(id_field, None) and loc.get(label_field, None)}
-            LOG.info("Location Map to %s: External Value -> Oomnitza ID", id_field)
-            for name in sorted(mappings.keys()):
-                LOG.debug("    {} -> {}".format(name, mappings[name]))
-            return mappings
-        except:
-            LOG.exception("Failed to load Locations from Oomnitza.")
-            return {}
 
     def get_settings(self, connector, *keys):
         try:
@@ -148,3 +125,28 @@ class Connector(BaseConnector):
         except:
             LOG.exception("Failed to load setting from Oomnitza.")
             raise
+
+    def _calculate_data_weight(self, data):
+        data = [row for row in data]
+        data = json.dumps(data, sort_keys=True)
+        data_md5 = hashlib.md5(data.encode('utf-8')).hexdigest()
+        return data_md5
+
+    def _get_portion(self, data, service_name):
+        portion_weight = self._calculate_data_weight(data)
+        url = "{}/api/v2/user/{}".format(self.settings['url'], service_name)
+        response = self.post(url, {	"weight": portion_weight})
+        content = json.loads(response.content)
+        return content['run_id']
+
+    def _sent_to_bss(self, data, run_id, data_type):
+        url = "{}/api/v2/bulk/{}/{}".format(
+            self.settings['url'], data_type, run_id)
+        response = self.post(url, data)
+        return response
+
+    def _close_portion(self, run_id):
+        url = "{}/api/v2/{}/finished" \
+            .format(self.settings['url'], run_id)
+        response = self.get(url)
+        return response

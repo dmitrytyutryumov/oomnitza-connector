@@ -19,14 +19,7 @@ class Connector(UserConnector):
         'load_organizations': {'order': 6, 'default': False},
     }
 
-    FieldMappings = {
-        'USER':           {'source': "email"},
-        'FIRST_NAME':     {'source': "name", 'converter': "first_from_full"},
-        'LAST_NAME':      {'source': "name", 'converter': "last_from_full"},
-        'EMAIL':          {'source': "email"},
-        'PHONE':          {'source': "phone"},
-        'PERMISSIONS_ID': {'setting': "default_role"},
-    }
+    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)

@@ -6,13 +6,13 @@ import os
 import pprint
 import shutil
 import sys
-from ConfigParser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
+from ConfigParser import SafeConfigParser, ParsingError, \
+    MissingSectionHeaderError, DEFAULTSECT
 
 from lib.error import AuthenticationError
 from utils.relative_path import relative_app_path
 
 LOG = logging.getLogger("lib/config")
-
 
 from .filter import DynamicConverter, parse_filter
 from .error import ConfigError
@@ -40,10 +40,10 @@ class SpecialConfigParser(SafeConfigParser):
         leading whitespace.  Blank lines, lines beginning with a '#',
         and just about everything else are ignored.
         """
-        cursect = None                        # None, or a dictionary
+        cursect = None  # None, or a dictionary
         optname = None
         lineno = 0
-        e = None                              # None, or an exception
+        e = None  # None, or an exception
         while True:
             line = fp.readline()
             if not line:
@@ -92,7 +92,7 @@ class SpecialConfigParser(SafeConfigParser):
                                 # ';' is a comment delimiter only if it follows
                                 # a spacing character
                                 pos = optval.find(';')
-                                if pos != -1 and optval[pos-1].isspace():
+                                if pos != -1 and optval[pos - 1].isspace():
                                     optval = optval[:pos]
                             optval = optval.strip()
                             # allow empty values
@@ -126,7 +126,7 @@ class SpecialConfigParser(SafeConfigParser):
 def generate_ini_file(args):
     # take a backup of we will be overwriting a file.
     if os.path.exists(args.ini):
-        shutil.move(args.ini, args.ini+'.bak')
+        shutil.move(args.ini, args.ini + '.bak')
 
     # write out the ini file.
     with open(args.ini, 'w') as ini_file:
@@ -155,20 +155,26 @@ def parse_config(args):
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
                     DynamicConverter(name, filter_str)
-            elif section == 'bss' or config.has_option(section, 'enable') and config.getboolean(section, 'enable'):
+            elif section == 'bss' or config.has_option(section,
+                                                       'enable') and config.getboolean(
+                    section, 'enable'):
                 if not connectors and section != 'bss':
-                    raise ConfigError("Error: [bss] must be the first section in the ini file.")
+                    raise ConfigError(
+                        "Error: [bss] must be the first section in the ini file.")
 
                 if '.' in section:
                     module = section.split('.')[0]
                 else:
                     module = section
                 try:
-                    mod = importlib.import_module("connectors.{0}".format(module))
+                    mod = importlib.import_module(
+                        "connectors.{0}".format(module))
                     connector = mod.Connector
                 except ImportError:
-                    LOG.exception("Could not import connector for '%s'.", section)
-                    raise ConfigError("Could not import connector for '%s'." % section)
+                    LOG.exception("Could not import connector for '%s'.",
+                                  section)
+                    raise ConfigError(
+                        "Could not import connector for '%s'." % section)
                 else:
                     LOG.debug("parse_config section: %s", section)
                     try:
@@ -177,33 +183,18 @@ def parse_config(args):
                                 continue  # No processing of enable flag.
                             elif key == 'recordfilter':
                                 if '__filter__' in cfg:
-                                    Exception("'filter' is defined more than once in section: %s" % section)
+                                    Exception(
+                                        "'filter' is defined more than once in section: %s" % section)
                                 cfg['__filter__'] = parse_filter(value)
-                            elif key.startswith('mapping.'):
-                                try:
-                                    cfg[key] = json.loads(value)
-                                except ValueError:
-                                    # if the value is just a string, it is the name of the source field, convert to dict
-                                    if isinstance(value, basestring):
-                                        cfg[key] = {'source': value}
-                                    else:
-                                        raise ConfigError(
-                                            "Failed to parse json field mapping %s:%s = %r" % (section, key, value)
-                                        )
-
-                            # elif key.startswith('subrecord.') or connector.Settings[key].get('is_json', False):
-                            #     try:
-                            #         cfg[key] = json.loads(value)
-                            #     except ValueError:
-                            #         raise ConfigError("Failed to parse json value %s:%s = %r" % (section, key, value))
                             else:
                                 if key in connector.Settings:
                                     setting = connector.Settings[key]
                                 elif key in connector.CommonSettings:
                                     setting = connector.CommonSettings[key]
                                 else:
-                                    #raise ConfigError("Invalid setting in %r section: %r." % (section, key))
-                                    LOG.warning("Invalid setting in %r section: %r.", section, key)
+                                    LOG.warning(
+                                        "Invalid setting in %r section: %r.",
+                                        section, key)
                                     continue
 
                                 cfg[key] = value
@@ -211,24 +202,28 @@ def parse_config(args):
                                 choices = setting.get('choices', [])
                                 if choices and cfg[key] not in choices:
                                     raise ConfigError(
-                                        "Invalid value for %s: %r. Value must be one of %r" % (key, value, choices)
+                                        "Invalid value for %s: %r. Value must be one of %r" % (
+                                        key, value, choices)
                                     )
 
-                        #ToDo: look into making this generic: env_FIELD so any setting can be an environment variable.
                         if 'env_password' in cfg and cfg['env_password']:
                             LOG.info(
-                                "Loading password for %s from environment variable %r.", section, cfg['env_password']
+                                "Loading password for %s from environment variable %r.",
+                                section, cfg['env_password']
                             )
                             try:
-                                cfg['password'] = os.environ[cfg['env_password']]
+                                cfg['password'] = os.environ[
+                                    cfg['env_password']]
                             except KeyError:
                                 raise ConfigError(
                                     "Unable to load password for %s from environment "
-                                    "variable %r." % (section, cfg['env_password'])
+                                    "variable %r." % (
+                                    section, cfg['env_password'])
                                 )
 
                         if 'bss' in connectors:
-                            cfg["__oomnitza_connector__"] = connectors['bss']["__connector__"]
+                            cfg["__oomnitza_connector__"] = connectors['bss'][
+                                "__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
                         try:
@@ -243,15 +238,20 @@ def parse_config(args):
                     except ConfigError:
                         raise
                     except AuthenticationError as exp:
-                        raise ConfigError("Authentication failure: %s" % exp.message)
+                        raise ConfigError(
+                            "Authentication failure: %s" % exp.message)
                     except KeyError as exp:
-                        raise ConfigError("Unknown ini setting: %r" % exp.message)
+                        raise ConfigError(
+                            "Unknown ini setting: %r" % exp.message)
                     except Exception as exp:
-                        LOG.exception("Error initializing connector: %r" % section)
-                        raise ConfigError("Error initializing connector: %r" % section)
+                        LOG.exception(
+                            "Error initializing connector: %r" % section)
+                        raise ConfigError(
+                            "Error initializing connector: %r" % section)
 
             else:
-                LOG.debug("Skipping connector '%s' as it is not enabled.", section)
+                LOG.debug("Skipping connector '%s' as it is not enabled.",
+                          section)
                 pass
     except IOError:
         LOG.exception("Could not open config file.")
@@ -259,14 +259,6 @@ def parse_config(args):
 
     if len(connectors) <= 1:
         raise ConfigError("No connectors have been enabled.")
-
-    if args.show_mappings:
-        for name, connector in connectors.items():
-            if name == 'oomnitza':
-                continue
-            pprint.pprint(connector["__connector__"].section, "Mappings")
-            pprint.pprint(connector["__connector__"].field_mappings)
-        exit(0)
 
     return connectors
 
@@ -285,9 +277,10 @@ def get_default_ini():
     # Note(daniel): pkgutil.iter_modules stopped working when built with pyinstaller.
     #               I don't know why and it was easier to switch to a hardcoded set of values.
     # for importer, modname, ispkg in pkgutil.iter_modules([relative_path('connectors')], prefix):
-    for modname in [prefix+name for name in EnabledConnectors]:
+    for modname in [prefix + name for name in EnabledConnectors]:
         # Don't process these as they are internal
-        if modname in ['connectors.base'] or modname.startswith('connectors.test'):
+        if modname in ['connectors.base'] or modname.startswith(
+                'connectors.test'):
             continue
 
         name = modname.split('.')[-1]
@@ -299,19 +292,22 @@ def get_default_ini():
         except ImportError as exp:
             if name == 'sccm':
                 continue
-            sections[name] = [('enable', 'False'), ("# Missing Required Package: {0}".format(exp.message), None)]
+            sections[name] = [('enable', 'False'), (
+            "# Missing Required Package: {0}".format(exp.message), None)]
         except AttributeError as exp:
-            sections[name] = [('enable', 'False'), ("# AttributeError: {0}".format(exp.message), None)]
+            sections[name] = [('enable', 'False'), (
+            "# AttributeError: {0}".format(exp.message), None)]
         except Exception as exp:
-            sections[name] = [('enable', 'False'), ("# Exception: {0}".format(exp.message), None)]
-
+            sections[name] = [('enable', 'False'),
+                              ("# Exception: {0}".format(exp.message), None)]
 
     return format_sections_for_ini(sections)
 
 
 def format_sections_for_ini(sections):
     parts = []
-    for section in ['oomnitza'] + sorted([section for section in sections.keys() if section != 'oomnitza']):
+    for section in ['oomnitza'] + sorted(
+            [section for section in sections.keys() if section != 'oomnitza']):
         parts.append('[{0}]'.format(section))
         for key, value in sections[section]:
             if not isinstance(value, basestring):
@@ -334,7 +330,8 @@ class RotateHandler(logging.handlers.RotatingFileHandler):
             open(filename, 'w').close()
 
         super(RotateHandler, self).__init__(filename=filename, mode='a',
-                                            maxBytes=maxBytes, backupCount=backupCount,
+                                            maxBytes=maxBytes,
+                                            backupCount=backupCount,
                                             encoding=encoding, delay=0)
 
 
@@ -350,8 +347,6 @@ def setup_logging(args):
 
         logging.captureWarnings(True)
     except IOError:
-        sys.stderr.write("Error opening logging config file: {0}!\n".format(config_file))
+        sys.stderr.write(
+            "Error opening logging config file: {0}!\n".format(config_file))
         sys.exit(1)
-
-
-

@@ -61,9 +61,7 @@ class Connector(AuditConnector):
     DefaultConverters = {
         # FORMAT: "{source field}": "{converter to be applied by default}",
     }
-    FieldMappings = {
-        'APPLICATIONS':      {'source': "software"},
-    }
+    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)

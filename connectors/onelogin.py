@@ -23,14 +23,7 @@ class Connector(UserConnector):
         'api_token':        {'order': 6, 'example': "", 'default': ""},
     }
 
-    FieldMappings = {
-        'USER':           {'source': "username"},
-        'FIRST_NAME':     {'source': "firstname"},
-        'LAST_NAME':      {'source': "lastname"},
-        'EMAIL':          {'source': "email"},
-        'PHONE':          {'source': "phone"},
-        'PERMISSIONS_ID': {'setting': "default_role"},
-    }
+    FieldMappings = {}
 
     StandardFields = {
         'activated-at',

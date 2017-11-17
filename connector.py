@@ -137,8 +137,6 @@ def parse_command_line_args(for_server=False):
 
     parser.add_argument('--version', action='store_true',
                         help="Show the connector version.")
-    parser.add_argument('--show-mappings', action='store_true',
-                        help="Show the mappings which would be used by the connector.")
     parser.add_argument('--testmode', action='store_true',
                         help="Run connectors in test mode.")
     parser.add_argument('--save-data', action='store_true',

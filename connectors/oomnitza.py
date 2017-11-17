@@ -18,7 +18,6 @@ class Connector(BaseConnector):
         'password':  {'order': 4, 'example': "ThePassword", 'default': ""},
 
     }
-    # no FieldMappings for oomnitza connector
     FieldMappings = {}
 
     def __init__(self, section, settings):
