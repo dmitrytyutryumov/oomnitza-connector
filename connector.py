@@ -63,7 +63,7 @@ def prepare_connector(cmdline_args):
         LOG.exception("Error processing config.ini file.")
         sys.exit(1)
 
-    oomnitza_connector = connectors.pop('bss')["__connector__"]
+    oomnitza_connector = connectors.pop('dss')["__connector__"]
     try:
         oomnitza_connector.authenticate()
     except (connector.AuthenticationError, requests.HTTPError,

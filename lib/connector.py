@@ -10,6 +10,7 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
 
 from lib import TrueValues
+from lib.config import get_dss_url
 from utils.data import get_field_value
 from .converters import Converter
 from .error import ConfigError, AuthenticationError
@@ -37,7 +38,8 @@ def run_connector(oomnitza_connector, connector, options):
             LOG.error("Authentication failure: %s", exp.message)
             return
         except requests.HTTPError:
-            LOG.exception("Error connecting to %s service.", connector['__name__'])
+            LOG.exception("Error connecting to %s service.",
+                          connector['__name__'])
             return
 
         try:
@@ -45,11 +47,13 @@ def run_connector(oomnitza_connector, connector, options):
         except ConfigError as exp:
             LOG.error(exp.message)
         except requests.HTTPError:
-            LOG.exception("Error syncing data for %s service.", connector['__name__'])
+            LOG.exception("Error syncing data for %s service.",
+                          connector['__name__'])
     except DynamicException as exp:
         LOG.error("Error running filter for %s: %s", connector['__name__'], exp)
     except:  # pylint:disable=broad-except
-        LOG.exception("Unhandled error in run_connector for %s", connector['__name__'])
+        LOG.exception("Unhandled error in run_connector for %s",
+                      connector['__name__'])
 
 
 def stop_connector(connector):
@@ -69,17 +73,21 @@ class BaseConnector(object):
     OomnitzaConnector = None
 
     CommonSettings = {
-        'verify_ssl':     {'order': 0, 'default': "True"},
-        'cacert_file':    {'order': 1, 'default': ""},
-        'cacert_dir':     {'order': 2, 'default': ""},
-        'env_password':   {'order': 3, 'default': ""},
-        'ssl_protocol':   {'order': 4, 'default': ""},
+        'verify_ssl': {'order': 0, 'default': "True"},
+        'cacert_file': {'order': 1, 'default': ""},
+        'cacert_dir': {'order': 2, 'default': ""},
+        'env_password': {'order': 3, 'default': ""},
+        'ssl_protocol': {'order': 4, 'default': ""},
         'use_server_map': {'order': 5, 'default': "True"},
         'only_if_filled': {'order': 6, 'default': ""},
         'dont_overwrite': {'order': 7, 'default': ""},
-        'insert_only':    {'order': 8, 'default': "False"},
-        'update_only':    {'order': 9, 'default': "False"},
+        'insert_only': {'order': 8, 'default': "False"},
+        'update_only': {'order': 9, 'default': "False"},
     }
+
+    def set_dss_log(self, handler, msg, portion_id, session):
+        return handler(
+            msg, extra={'portion_id': portion_id, 'session': session})
 
     def __init__(self, section, settings):
         self.processed_records_counter = 0.
@@ -96,7 +104,8 @@ class BaseConnector(object):
                 self.__filter__ = value
             else:
                 # first, simple copy for internal __key__ values
-                if (key.startswith('__') and key.endswith('__')) or key in self.BuiltinSettings:
+                if (key.startswith('__') and key.endswith(
+                        '__')) or key in self.BuiltinSettings:
                     self.settings[key] = value
                     continue
 
@@ -106,10 +115,12 @@ class BaseConnector(object):
                     setting = self.CommonSettings[key]
                 else:
                     # raise ConfigError("Invalid setting %r." % key)
-                    LOG.warning("Invalid setting in %r section: %r." % (section, key))
+                    LOG.warning(
+                        "Invalid setting in %r section: %r." % (section, key))
                     continue
 
                 self.settings[key] = value
+        self.dss_url = get_dss_url()
 
         # loop over settings definitions, setting default values
         for key, setting in self.Settings.items():
@@ -120,7 +131,7 @@ class BaseConnector(object):
                 else:
                     self.settings[key] = default
 
-        if section == 'bss' and not BaseConnector.OomnitzaConnector:
+        if section == 'dss' and not BaseConnector.OomnitzaConnector:
             BaseConnector.OomnitzaConnector = self
 
     @classmethod
@@ -149,12 +160,16 @@ class BaseConnector(object):
             if protocol:
                 LOG.info("Forcing SSL Protocol to: %s", protocol)
                 if protocol.lower() in AdapterMap:
-                    self._session.mount("https://", AdapterMap[protocol.lower()](max_retries=retries))
+                    self._session.mount("https://",
+                                        AdapterMap[protocol.lower()](
+                                            max_retries=retries))
                 else:
-                    raise RuntimeError("Invalid value for ssl_protocol: %r. Valid values are %r.",
-                                       protocol, list(set(AdapterMap.keys())))
+                    raise RuntimeError(
+                        "Invalid value for ssl_protocol: %r. Valid values are %r.",
+                        protocol, list(set(AdapterMap.keys())))
             else:
-                self._session.mount("https://", HTTPAdapter(max_retries=retries))
+                self._session.mount("https://",
+                                    HTTPAdapter(max_retries=retries))
 
             self._session.mount("http://", HTTPAdapter(max_retries=retries))
         return self._session
@@ -190,8 +205,6 @@ class BaseConnector(object):
 
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
-        # LOG.debug("headers: %r", headers)
-        # LOG.debug("payload = %s", json.dumps(data))
         if post_as_json:
             data = json.dumps(data)
         response = session.post(url, data=data, headers=headers, auth=auth,
@@ -207,7 +220,9 @@ class BaseConnector(object):
         verify_ssl = self.settings.get('verify_ssl', True) in TrueValues
         if verify_ssl:
             if getattr(sys, 'frozen', False):
-                return os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
+                return os.path.join(
+                    getattr(sys, '_MEIPASS', os.path.abspath(".")),
+                    'cacert.pem')
             else:
                 return True
         else:
@@ -244,10 +259,11 @@ class BaseConnector(object):
         """
 
         if not (self.__filter__ is None or self.__filter__(rec)):
-            LOG.info("Skipping record %r because it did not pass the filter.", rec)
+            LOG.info("Skipping record %r because it did not pass the filter.",
+                     rec)
             return
 
-        self.send_to_oomnitza(oomnitza_connector, rec, options)
+        self.send_to_dss(oomnitza_connector, rec, options)
 
     def is_authorized(self):
         """
@@ -283,36 +299,29 @@ class BaseConnector(object):
             connection_pool = Pool(size=pool_size)
             records = self._load_records(options=options)
             connection_pool.spawn(
-                self.sender,*(oomnitza_connector, options, records))
+                self.sender, *(oomnitza_connector, options, records))
 
-            LOG.info("Sent %d records to Oomnitza.", len(records))
             connection_pool.join(timeout=60)  # set non-empty timeout to
             # guarantee context switching in case of threading
-
-            LOG.info(
-                "Finished! Processed %d records. "
-                "%d records have been sent to Oomnitza" % (
-                    len(records), len(records)))
-
             return True
         except RequestException as exp:
             raise ConfigError(
                 "Error loading records from %s: %s" % (
                     self.MappingName, exp.message))
 
-    def send_to_oomnitza(self, oomnitza_connector, data, options):
+    def send_to_dss(self, dss_connector, data, options=None):
         """
         Determine which method on the Oomnitza connector to call based on type of data.
         Can call:
             oomnitza_connector.(_test_)upload_assets
             oomnitza_connector.(_test_)upload_users
             oomnitza_connector.(_test_)upload_audit
-        :param oomnitza_connector: the Oomnitza connector
+        :param dss_connector: the Oomnitza connector
         :param data: the data to send (either single object or list)
         :return: the results of the Oomnitza method call
         """
         method = getattr(
-            oomnitza_connector,
+            dss_connector,
             "{}upload_data".format(
                 self.settings["__testmode__"] and '_test_' or ''
             )
@@ -322,12 +331,14 @@ class BaseConnector(object):
                 try:
                     os.makedirs("./saved_data")
                 except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                    if exc.errno == errno.EEXIST and os.path.isdir(
+                            "./saved_data"):
                         pass
                     else:
                         raise
 
-                filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
+                filename = "./saved_data/oom.payload{0:0>3}.json".format(
+                    self.send_counter)
                 LOG.info("Saving payload data to %s.", filename)
                 with open(filename, 'w') as save_file:
                     self.send_counter += 1
@@ -335,7 +346,7 @@ class BaseConnector(object):
             except:
                 LOG.exception("Error saving data.")
 
-        result = method(data, options, self.RecordType)
+        result = method(data, options)
         if not self.settings["__testmode__"]:
             self.sent_records_counter += 1
         return result
@@ -349,8 +360,10 @@ class BaseConnector(object):
         try:
             return self.do_test_connection(options)
         except Exception as exp:
-            LOG.exception("Exception running %s.test_connection()." % self.MappingName)
-            return {'result': False, 'error': 'Test Connection Failed: %s' % exp.message}
+            LOG.exception(
+                "Exception running %s.test_connection()." % self.MappingName)
+            return {'result': False,
+                    'error': 'Test Connection Failed: %s' % exp.message}
 
     def do_test_connection(self, options):
         raise NotImplemented
@@ -406,7 +419,8 @@ class BaseConnector(object):
                     k, v = arg, True
                 params[k] = v
 
-        return Converter.run_converter(converter_name, field, record, value, params)
+        return Converter.run_converter(converter_name, field, record, value,
+                                       params)
 
 
 class UserConnector(BaseConnector):
@@ -420,12 +434,23 @@ class UserConnector(BaseConnector):
         else:
             self.normal_position = False
 
-    def send_to_oomnitza(self, oomnitza_connector, record, options):
+    def send_to_dss(self, dss_connector, record, options=None):
         options['agent_id'] = self.MappingName
         if self.normal_position:
             options['normal_position'] = True
 
-        return super(UserConnector, self).send_to_oomnitza(oomnitza_connector, record, options)
+        payload = {
+            "agent_id": self.MappingName,
+            "data_type": self.RecordType,
+            "sync_field": self.settings['sync_field'],
+            "data": record,
+            "insert_only": self.settings.get('insert_only', "False"),
+            "update_only": self.settings.get('update_only', "False"),
+            "only_if_filled": self.settings.get('only_if_filled', None),
+            "dont_overwrite": self.settings.get('dont_overwrite', None),
+            "options": options
+        }
+        return super(UserConnector, self).send_to_dss(dss_connector, payload)
 
 
 class AuditConnector(BaseConnector):
@@ -435,14 +460,16 @@ class AuditConnector(BaseConnector):
     def __init__(self, section, settings):
         super(AuditConnector, self).__init__(section, settings)
 
-    def send_to_oomnitza(self, oomnitza_connector, record, options):
+    def send_to_dss(self, dss_connector, record, options=None):
         payload = {
             "agent_id": self.MappingName,
+            "data_type": self.RecordType,
             "sync_field": self.settings['sync_field'],
-            "computers": record,
+            "data": record,
             "insert_only": self.settings.get('insert_only', "False"),
             "update_only": self.settings.get('update_only', "False"),
             "only_if_filled": self.settings.get('only_if_filled', None),
             "dont_overwrite": self.settings.get('dont_overwrite', None),
+            "options": options
         }
-        return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)
+        return super(AuditConnector, self).send_to_dss(dss_connector, payload)

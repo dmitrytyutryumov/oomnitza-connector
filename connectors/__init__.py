@@ -1,5 +1,5 @@
 EnabledConnectors = {
-    'bss',
+    'dss',
 
     # 'oomnitza',
     'airwatch',

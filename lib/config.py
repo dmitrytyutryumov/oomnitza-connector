@@ -3,11 +3,12 @@ import json
 import logging
 import logging.config
 import os
-import pprint
 import shutil
 import sys
 from ConfigParser import SafeConfigParser, ParsingError, \
     MissingSectionHeaderError, DEFAULTSECT
+
+from configparser import ConfigParser as config_parser
 
 from lib.error import AuthenticationError
 from utils.relative_path import relative_app_path
@@ -135,6 +136,18 @@ def generate_ini_file(args):
     LOG.info("{0} has been generated.".format(args.ini))
 
 
+def get_dss_url():
+    config = config_parser()
+    config.read('config.ini')
+    return config['dss']['url']
+
+
+def get_auth_token(name):
+    config = config_parser()
+    config.read('config.ini')
+    return config[name]['api_token']
+
+
 def parse_config(args):
     """
     Parse connector configuration and generate a result in dictionary
@@ -150,17 +163,18 @@ def parse_config(args):
             raise ConfigError("Error: unable to open ini file: %r" % args.ini)
 
         config.read(args.ini)
+
         for section in config.sections():
             cfg = {}
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
                     DynamicConverter(name, filter_str)
-            elif section == 'bss' or config.has_option(section,
+            elif section == 'dss' or config.has_option(section,
                                                        'enable') and config.getboolean(
-                    section, 'enable'):
-                if not connectors and section != 'bss':
+                section, 'enable'):
+                if not connectors and section != 'dss':
                     raise ConfigError(
-                        "Error: [bss] must be the first section in the ini file.")
+                        "Error: [dss] must be the first section in the ini file.")
 
                 if '.' in section:
                     module = section.split('.')[0]
@@ -203,7 +217,7 @@ def parse_config(args):
                                 if choices and cfg[key] not in choices:
                                     raise ConfigError(
                                         "Invalid value for %s: %r. Value must be one of %r" % (
-                                        key, value, choices)
+                                            key, value, choices)
                                     )
 
                         if 'env_password' in cfg and cfg['env_password']:
@@ -218,11 +232,11 @@ def parse_config(args):
                                 raise ConfigError(
                                     "Unable to load password for %s from environment "
                                     "variable %r." % (
-                                    section, cfg['env_password'])
+                                        section, cfg['env_password'])
                                 )
 
-                        if 'bss' in connectors:
-                            cfg["__oomnitza_connector__"] = connectors['bss'][
+                        if 'dss' in connectors:
+                            cfg["__oomnitza_connector__"] = connectors['dss'][
                                 "__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
@@ -293,10 +307,10 @@ def get_default_ini():
             if name == 'sccm':
                 continue
             sections[name] = [('enable', 'False'), (
-            "# Missing Required Package: {0}".format(exp.message), None)]
+                "# Missing Required Package: {0}".format(exp.message), None)]
         except AttributeError as exp:
             sections[name] = [('enable', 'False'), (
-            "# AttributeError: {0}".format(exp.message), None)]
+                "# AttributeError: {0}".format(exp.message), None)]
         except Exception as exp:
             sections[name] = [('enable', 'False'),
                               ("# Exception: {0}".format(exp.message), None)]
