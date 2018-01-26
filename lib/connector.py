@@ -85,9 +85,9 @@ class BaseConnector(object):
         'update_only': {'order': 9, 'default': "False"},
     }
 
-    def set_dss_log(self, handler, msg, portion_id, session):
+    def set_dss_log(self, handler, msg, portion_id):
         return handler(
-            msg, extra={'portion_id': portion_id, 'session': session})
+            msg, extra={'portion_id': portion_id, 'session': self._session})
 
     def __init__(self, section, settings):
         self.processed_records_counter = 0.
@@ -98,6 +98,7 @@ class BaseConnector(object):
         self.__filter__ = None
         self.send_counter = 0
         self._session = None
+        self.field_mappings = {}
 
         for key, value in settings.items():
             if key == '__filter__':
@@ -301,7 +302,7 @@ class BaseConnector(object):
             connection_pool.spawn(
                 self.sender, *(oomnitza_connector, options, records))
 
-            connection_pool.join(timeout=60)  # set non-empty timeout to
+            connection_pool.join(timeout=None)  # set non-empty timeout to
             # guarantee context switching in case of threading
             return True
         except RequestException as exp:

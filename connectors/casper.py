@@ -139,8 +139,9 @@ class Connector(AuditConnector):
         pool_size = self.settings['__workers__']
 
         connection_pool = Pool(size=pool_size)
-
-        for device_info in connection_pool.imap(self.fetch_asset_details, self.fetch_asset_ids(), maxsize=pool_size):
+        for device_info in connection_pool.imap(
+                self.fetch_asset_details, self.fetch_asset_ids(),
+                maxsize=pool_size):
             if device_info:
                 yield device_info
             else:
